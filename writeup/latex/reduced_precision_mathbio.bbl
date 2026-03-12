@@ -1,0 +1,25 @@
+\begin{thebibliography}{2}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Shai et~al.(2026)Shai, Amdahl-Culleton, Christensen, Bigelow, Rosas,
+  Boyd, Alt, Ray, and Riechers]{shai2026}
+Adam Shai, Leigh Amdahl-Culleton, Connor~L. Christensen, Henry~R. Bigelow,
+  Fernando~E. Rosas, Alexander~B. Boyd, Elke~A. Alt, Kyle~J. Ray, and Paul~M.
+  Riechers.
+\newblock Transformers learn factored representations.
+\newblock \emph{Preprint}, 2026.
+
+\bibitem[Shai et~al.(2024)Shai, Marzen, Teixeira, Gietelink~Oldenziel, and
+  Riechers]{shai2024}
+Adam~S. Shai, Sarah~E. Marzen, Lucas Teixeira, Alexander Gietelink~Oldenziel,
+  and Paul~M. Riechers.
+\newblock Transformers represent belief state geometry in their residual
+  stream.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2024.
+
+\end{thebibliography}
