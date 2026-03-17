@@ -1,0 +1,515 @@
+{
+  "experiment_1_head_to_head": {
+    "embedding": {
+      "mse_probe": {
+        "mse": 0.03433269296996012,
+        "kl_divergence": 0.1956200756213772,
+        "pairwise_r2_euclidean": 0.37475227174142134,
+        "pairwise_rho_kl": 0.4467926893170414,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.03174463542945985,
+        "boundary_kl": 0.2288532887497889
+      },
+      "kl_probe": {
+        "mse": 0.034331877465191216,
+        "kl_divergence": 0.19561020270144994,
+        "pairwise_r2_euclidean": 0.3747088316227895,
+        "pairwise_rho_kl": 0.44811615816754524,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.031888847688858475,
+        "boundary_kl": 0.22956638078753513
+      }
+    },
+    "layer_0": {
+      "mse_probe": {
+        "mse": 0.006703608336774141,
+        "kl_divergence": 0.048001055110313176,
+        "pairwise_r2_euclidean": 0.8374704869070848,
+        "pairwise_rho_kl": 0.8765172016807242,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.005762704470507159,
+        "boundary_kl": 0.05903358000462393
+      },
+      "kl_probe": {
+        "mse": 0.007295573049694578,
+        "kl_divergence": 0.04813635788457913,
+        "pairwise_r2_euclidean": 0.8230490207744636,
+        "pairwise_rho_kl": 0.8711389219310423,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.0060191576209356135,
+        "boundary_kl": 0.05535864141149869
+      }
+    },
+    "layer_1": {
+      "mse_probe": {
+        "mse": 0.006092917903872941,
+        "kl_divergence": 0.050202333208148146,
+        "pairwise_r2_euclidean": 0.8520087173448055,
+        "pairwise_rho_kl": 0.8818267683780548,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004767995924508545,
+        "boundary_kl": 0.06034635280743831
+      },
+      "kl_probe": {
+        "mse": 0.006431274215903242,
+        "kl_divergence": 0.04235005492494805,
+        "pairwise_r2_euclidean": 0.843205017749154,
+        "pairwise_rho_kl": 0.8870167704259377,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.0044676606979882445,
+        "boundary_kl": 0.046036869852890815
+      }
+    },
+    "layer_2": {
+      "mse_probe": {
+        "mse": 0.005549057342567263,
+        "kl_divergence": 0.06298605886456701,
+        "pairwise_r2_euclidean": 0.8647234046210056,
+        "pairwise_rho_kl": 0.8687593207210584,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.00444955798659407,
+        "boundary_kl": 0.07757597323165036
+      },
+      "kl_probe": {
+        "mse": 0.005502201510955627,
+        "kl_divergence": 0.03620427299395182,
+        "pairwise_r2_euclidean": 0.8649198526573533,
+        "pairwise_rho_kl": 0.9029026859570298,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.003948003393346735,
+        "boundary_kl": 0.03997856301132496
+      }
+    },
+    "final": {
+      "mse_probe": {
+        "mse": 0.006581324699751621,
+        "kl_divergence": 0.10835122393783041,
+        "pairwise_r2_euclidean": 0.8430019735099775,
+        "pairwise_rho_kl": 0.8236646552275987,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.005983333717785991,
+        "boundary_kl": 0.14693534868864402
+      },
+      "kl_probe": {
+        "mse": 0.005656874550434703,
+        "kl_divergence": 0.03683824399919205,
+        "pairwise_r2_euclidean": 0.8631873108449611,
+        "pairwise_rho_kl": 0.9056142638265365,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.00417566028950917,
+        "boundary_kl": 0.0385555876560591
+      }
+    }
+  },
+  "experiment_2_pca_sweep": {
+    "1": {
+      "mse_probe": {
+        "mse": 0.09258920045171523,
+        "kl_divergence": 0.5876975320855921,
+        "pairwise_r2_euclidean": 0.006364386665943007,
+        "pairwise_rho_kl": 0.05177422000358243,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.1506795147222418,
+        "boundary_kl": 0.7246357406167203
+      },
+      "kl_probe": {
+        "mse": 0.08840470616706794,
+        "kl_divergence": 0.4279490711157378,
+        "pairwise_r2_euclidean": 0.009267094880384326,
+        "pairwise_rho_kl": 0.10056451100675715,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.14558396420776779,
+        "boundary_kl": 0.7005920563302497
+      }
+    },
+    "2": {
+      "mse_probe": {
+        "mse": 0.07364973401053113,
+        "kl_divergence": 0.39151711136145767,
+        "pairwise_r2_euclidean": 0.02642643464621574,
+        "pairwise_rho_kl": 0.14271888705448746,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.11339432711817173,
+        "boundary_kl": 0.5691141827640873
+      },
+      "kl_probe": {
+        "mse": 0.07160006780922325,
+        "kl_divergence": 0.3556498247173211,
+        "pairwise_r2_euclidean": 0.03425124187342139,
+        "pairwise_rho_kl": 0.1731675046635726,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.11126925913071745,
+        "boundary_kl": 0.5606531071818499
+      }
+    },
+    "3": {
+      "mse_probe": {
+        "mse": 0.0568318673549129,
+        "kl_divergence": 0.5009098472337468,
+        "pairwise_r2_euclidean": 0.14106333376024655,
+        "pairwise_rho_kl": 0.24957438628537912,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.08337888854422942,
+        "boundary_kl": 0.46965380783495264
+      },
+      "kl_probe": {
+        "mse": 0.052306224041339555,
+        "kl_divergence": 0.27533357787394375,
+        "pairwise_r2_euclidean": 0.1878449847082102,
+        "pairwise_rho_kl": 0.372812644044496,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.07571611320461179,
+        "boundary_kl": 0.40391529378133006
+      }
+    },
+    "4": {
+      "mse_probe": {
+        "mse": 0.02652353495671197,
+        "kl_divergence": 0.37326796103867393,
+        "pairwise_r2_euclidean": 0.5278243731089732,
+        "pairwise_rho_kl": 0.5543148730226535,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.03519346843262423,
+        "boundary_kl": 0.2663533212786895
+      },
+      "kl_probe": {
+        "mse": 0.023877705607545565,
+        "kl_divergence": 0.13461096153598814,
+        "pairwise_r2_euclidean": 0.5512169258897162,
+        "pairwise_rho_kl": 0.6885277028172986,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.027968795854217184,
+        "boundary_kl": 0.1718501793986666
+      }
+    },
+    "8": {
+      "mse_probe": {
+        "mse": 0.006100829674202282,
+        "kl_divergence": 0.07809694031571855,
+        "pairwise_r2_euclidean": 0.8532424876378821,
+        "pairwise_rho_kl": 0.8503569685311995,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004688073800319347,
+        "boundary_kl": 0.07655915849521396
+      },
+      "kl_probe": {
+        "mse": 0.006783011551252155,
+        "kl_divergence": 0.04665130250899063,
+        "pairwise_r2_euclidean": 0.8324905233038268,
+        "pairwise_rho_kl": 0.8762331927182039,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.003982656561827559,
+        "boundary_kl": 0.048142385044911806
+      }
+    },
+    "16": {
+      "mse_probe": {
+        "mse": 0.005920841894469323,
+        "kl_divergence": 0.07080448146389505,
+        "pairwise_r2_euclidean": 0.8564985311957705,
+        "pairwise_rho_kl": 0.8585133313233945,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004601725504532656,
+        "boundary_kl": 0.07773504792629474
+      },
+      "kl_probe": {
+        "mse": 0.006520975766487763,
+        "kl_divergence": 0.044149548051585885,
+        "pairwise_r2_euclidean": 0.8394827868638114,
+        "pairwise_rho_kl": 0.8820263594703365,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004051335311721473,
+        "boundary_kl": 0.046662143978491805
+      }
+    },
+    "32": {
+      "mse_probe": {
+        "mse": 0.00567594909249869,
+        "kl_divergence": 0.0612594568473163,
+        "pairwise_r2_euclidean": 0.8616799822561052,
+        "pairwise_rho_kl": 0.8719899196382422,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004420873400692688,
+        "boundary_kl": 0.07189340668124196
+      },
+      "kl_probe": {
+        "mse": 0.0059653259962600975,
+        "kl_divergence": 0.039854457352993755,
+        "pairwise_r2_euclidean": 0.85301409181612,
+        "pairwise_rho_kl": 0.8926300577347168,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004066493380057024,
+        "boundary_kl": 0.04322800609477486
+      }
+    },
+    "64": {
+      "mse_probe": {
+        "mse": 0.005549058502491046,
+        "kl_divergence": 0.06298583511322813,
+        "pairwise_r2_euclidean": 0.8647233007609613,
+        "pairwise_rho_kl": 0.8687603942496909,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004449524765244856,
+        "boundary_kl": 0.07757563296323235
+      },
+      "kl_probe": {
+        "mse": 0.005318486489423618,
+        "kl_divergence": 0.034798315256996636,
+        "pairwise_r2_euclidean": 0.8693429521306985,
+        "pairwise_rho_kl": 0.9074241174552036,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.00412055270867331,
+        "boundary_kl": 0.039407827769555204
+      }
+    }
+  },
+  "experiment_4_layer_profile": {
+    "embedding": {
+      "mse_probe_r2_overall": 0.6826935115092039,
+      "mse_probe_r2_per_component": [
+        0.8032402167103242,
+        0.7491665657580294,
+        0.17106495517768147
+      ],
+      "kl_probe_metrics": {
+        "mse": 0.03433167953617405,
+        "kl_divergence": 0.19560919697030957,
+        "pairwise_r2_euclidean": 0.374715973757259,
+        "pairwise_rho_kl": 0.44724188248263,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.031768316927766015,
+        "boundary_kl": 0.22897561552077583
+      },
+      "kl_probe_metrics_per_component": [
+        {
+          "mse": 0.03523992265029443,
+          "kl_divergence": 0.2595482800368981,
+          "pairwise_r2_euclidean": 0.7766165932884476,
+          "pairwise_rho_kl": 0.6455678342209581,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.03570348509768341,
+          "boundary_kl": 0.2633172873232909
+        },
+        {
+          "mse": 0.022943876935726828,
+          "kl_divergence": 0.12333513698622514,
+          "pairwise_r2_euclidean": 0.47930093164950155,
+          "pairwise_rho_kl": 0.5567209087697272,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.019744437139479907,
+          "boundary_kl": 0.12367777581369938
+        },
+        {
+          "mse": 0.044811239022500914,
+          "kl_divergence": 0.20394417388780545,
+          "pairwise_r2_euclidean": 0.12001035845043316,
+          "pairwise_rho_kl": 0.28861796771969545,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.017651483285752997,
+          "boundary_kl": 0.10789529357779418
+        }
+      ]
+    },
+    "layer_0": {
+      "mse_probe_r2_overall": 0.9380323094105806,
+      "mse_probe_r2_per_component": [
+        0.9569175274608436,
+        0.9804781574154008,
+        0.803740709255336
+      ],
+      "kl_probe_metrics": {
+        "mse": 0.007307518036427582,
+        "kl_divergence": 0.048194863612383766,
+        "pairwise_r2_euclidean": 0.8229043477568901,
+        "pairwise_rho_kl": 0.8711259055453385,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.006120366769861922,
+        "boundary_kl": 0.05588296671164458
+      },
+      "kl_probe_metrics_per_component": [
+        {
+          "mse": 0.008275931980726316,
+          "kl_divergence": 0.07325968574806564,
+          "pairwise_r2_euclidean": 0.9223942978375455,
+          "pairwise_rho_kl": 0.9632722917635758,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0079869454756518,
+          "boundary_kl": 0.07274352657954804
+        },
+        {
+          "mse": 0.0023480683475791625,
+          "kl_divergence": 0.01255249513447672,
+          "pairwise_r2_euclidean": 0.9291448423200211,
+          "pairwise_rho_kl": 0.9620260272983643,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0002548998020833018,
+          "boundary_kl": 0.002646179393608709
+        },
+        {
+          "mse": 0.011298553780977268,
+          "kl_divergence": 0.05877240995460892,
+          "pairwise_r2_euclidean": 0.6888222635522672,
+          "pairwise_rho_kl": 0.8375325565707448,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.00035865841158394535,
+          "boundary_kl": 0.005306453927159124
+        }
+      ]
+    },
+    "layer_1": {
+      "mse_probe_r2_overall": 0.94366346125811,
+      "mse_probe_r2_per_component": [
+        0.9648850222613529,
+        0.9794986677495982,
+        0.81279137182289
+      ],
+      "kl_probe_metrics": {
+        "mse": 0.006429115704712358,
+        "kl_divergence": 0.042318856228791404,
+        "pairwise_r2_euclidean": 0.8431791527901277,
+        "pairwise_rho_kl": 0.8869971101227807,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004433129397067043,
+        "boundary_kl": 0.045913625196951593
+      },
+      "kl_probe_metrics_per_component": [
+        {
+          "mse": 0.005925895978007298,
+          "kl_divergence": 0.05957742194817529,
+          "pairwise_r2_euclidean": 0.9494311872341283,
+          "pairwise_rho_kl": 0.9701861778413031,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.005750238686147712,
+          "boundary_kl": 0.059387900817740834
+        },
+        {
+          "mse": 0.002275253505898585,
+          "kl_divergence": 0.011913820788079543,
+          "pairwise_r2_euclidean": 0.9328304076098674,
+          "pairwise_rho_kl": 0.9644634725208575,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.00026964498724743656,
+          "boundary_kl": 0.002963789955191073
+        },
+        {
+          "mse": 0.011086197630231191,
+          "kl_divergence": 0.05546532595011939,
+          "pairwise_r2_euclidean": 0.6952233941068297,
+          "pairwise_rho_kl": 0.8433786499978282,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0005095504589463233,
+          "boundary_kl": 0.007829594437150547
+        }
+      ]
+    },
+    "layer_2": {
+      "mse_probe_r2_overall": 0.9484910985274239,
+      "mse_probe_r2_per_component": [
+        0.968172416795498,
+        0.9760353973775459,
+        0.8366692715574682
+      ],
+      "kl_probe_metrics": {
+        "mse": 0.005515063459185488,
+        "kl_divergence": 0.03629123951715409,
+        "pairwise_r2_euclidean": 0.8650951423497373,
+        "pairwise_rho_kl": 0.9028866213253471,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.003827040739392856,
+        "boundary_kl": 0.039374354788040355
+      },
+      "kl_probe_metrics_per_component": [
+        {
+          "mse": 0.005066774250557591,
+          "kl_divergence": 0.04976759254941089,
+          "pairwise_r2_euclidean": 0.9537012640379087,
+          "pairwise_rho_kl": 0.966982198453885,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.004873959561960029,
+          "boundary_kl": 0.04937615290661192
+        },
+        {
+          "mse": 0.0022729907881527374,
+          "kl_divergence": 0.012790960412132549,
+          "pairwise_r2_euclidean": 0.934965622350526,
+          "pairwise_rho_kl": 0.9629182815249948,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0004928401385698187,
+          "boundary_kl": 0.0067305762624032895
+        },
+        {
+          "mse": 0.009205425338846137,
+          "kl_divergence": 0.04631516558991883,
+          "pairwise_r2_euclidean": 0.7471828804123593,
+          "pairwise_rho_kl": 0.8738970180823206,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0008513016403522446,
+          "boundary_kl": 0.015499530098746528
+        }
+      ]
+    },
+    "final": {
+      "mse_probe_r2_overall": 0.9370200561194868,
+      "mse_probe_r2_per_component": [
+        0.9582418919088095,
+        0.967635360684072,
+        0.8148410859160964
+      ],
+      "kl_probe_metrics": {
+        "mse": 0.00565699691333904,
+        "kl_divergence": 0.036840158221005795,
+        "pairwise_r2_euclidean": 0.8632030287919573,
+        "pairwise_rho_kl": 0.905620761439978,
+        "simplex_violation_rate": 0.0,
+        "boundary_mse": 0.004177835195951846,
+        "boundary_kl": 0.03861499127910316
+      },
+      "kl_probe_metrics_per_component": [
+        {
+          "mse": 0.005265460132643546,
+          "kl_divergence": 0.045733377782398055,
+          "pairwise_r2_euclidean": 0.9416261083831821,
+          "pairwise_rho_kl": 0.9568412525079223,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0051192851589213495,
+          "boundary_kl": 0.045424154148049824
+        },
+        {
+          "mse": 0.0024114200080211875,
+          "kl_divergence": 0.016750960855402616,
+          "pairwise_r2_euclidean": 0.9239535735075542,
+          "pairwise_rho_kl": 0.9470756436854365,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0012392522521676157,
+          "boundary_kl": 0.0159374809745618
+        },
+        {
+          "mse": 0.009294110599352385,
+          "kl_divergence": 0.04803613602521671,
+          "pairwise_r2_euclidean": 0.7159141313727575,
+          "pairwise_rho_kl": 0.844535336182142,
+          "simplex_violation_rate": 0.0,
+          "boundary_mse": 0.0011577289484282828,
+          "boundary_kl": 0.02497629205565336
+        }
+      ]
+    }
+  },
+  "config": {
+    "n_analysis": 2000,
+    "kl_probe_lr": 0.001,
+    "kl_probe_epochs": 500,
+    "kl_probe_warm_start": true,
+    "pca_sweep_layer": "layer_2",
+    "pca_sweep_k_values": [
+      1,
+      2,
+      3,
+      4,
+      8,
+      16,
+      32,
+      64
+    ]
+  }
+}

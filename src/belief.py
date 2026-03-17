@@ -106,3 +106,42 @@ def compute_mixture_beliefs(token_sequences: np.ndarray,
     component_posteriors = joint.sum(axis=3)  # (N, L, K)
 
     return joint, component_posteriors
+
+
+def compute_beliefs_general(token_sequences: np.ndarray, hmm) -> np.ndarray:
+    """Compute Bayesian belief states for a single general HMM.
+
+    Args:
+        token_sequences: int array (N, L) of observed tokens
+        hmm: a GeneralHMM instance (or any object with .T, .n_states, .stationary)
+
+    Returns:
+        beliefs: float array (N, L, n_states) where beliefs[i, t, :] is the
+                 belief distribution over hidden states for sequence i
+                 at position t (AFTER observing tokens 0..t-1)
+    """
+    N, L = token_sequences.shape
+    S = hmm.n_states
+    beliefs = np.zeros((N, L, S))
+
+    # Initialize from stationary distribution
+    beliefs[:, 0, :] = hmm.stationary[None, :]
+
+    for t in range(1, L):
+        token = token_sequences[:, t - 1]  # token observed at previous position
+        eta_prev = beliefs[:, t - 1, :]  # (N, S)
+
+        # T[tok] has shape (N, S, S) — one transition matrix per sequence
+        T_tok = hmm.T[token]  # (N, S, S)
+
+        # eta_new[i] = eta_prev[i] @ T_tok[i]
+        eta_new = np.einsum('ij,ijk->ik', eta_prev, T_tok)
+
+        # Normalize
+        normalizer = eta_new.sum(axis=1, keepdims=True)
+        normalizer = np.where(normalizer > 0, normalizer, 1.0)
+        eta_new = eta_new / normalizer
+
+        beliefs[:, t, :] = eta_new
+
+    return beliefs

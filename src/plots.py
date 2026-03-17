@@ -511,3 +511,304 @@ def plot_explained_variance(pca_results: dict, save_path: str = None):
     plt.tight_layout()
     _save_fig(fig, save_path)
     return fig
+
+
+# --- Information-Geometric Probe Comparison Plots ---
+
+def _get_ordered_layer_keys(data_dict: dict) -> list:
+    """Get layer keys in order: embedding, layer_0, layer_1, ..., final."""
+    layer_keys = sorted([k for k in data_dict if k not in ('embedding', 'final')],
+                        key=lambda x: int(x.split('_')[-1]) if x.startswith('layer') else 999)
+    all_keys = []
+    if 'embedding' in data_dict:
+        all_keys.append('embedding')
+    all_keys.extend(layer_keys)
+    if 'final' in data_dict:
+        all_keys.append('final')
+    return all_keys
+
+
+def plot_probe_comparison(comparison_results: dict, save_path: str = None):
+    """Bar chart comparing MSE and KL probe metrics side by side across layers."""
+    mse_data = comparison_results['mse']
+    kl_data = comparison_results['kl']
+
+    layer_keys = _get_ordered_layer_keys(mse_data)
+    layer_keys = [k for k in layer_keys if k in kl_data]
+
+    metric_names = ['mse', 'kl_divergence', 'pairwise_r2_euclidean',
+                    'pairwise_rho_kl', 'simplex_violation_rate', 'boundary_kl']
+    metric_labels = ['MSE', 'KL Divergence', 'Pairwise R² (Euc)',
+                     'Pairwise ρ (KL)', 'Simplex Violation %', 'Boundary KL']
+
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    axes = axes.flatten()
+
+    x = np.arange(len(layer_keys))
+    width = 0.35
+
+    for idx, (metric, label) in enumerate(zip(metric_names, metric_labels)):
+        ax = axes[idx]
+        mse_vals = []
+        kl_vals = []
+        for lk in layer_keys:
+            mse_m = mse_data[lk].get('metrics', mse_data[lk])
+            kl_m = kl_data[lk].get('metrics', kl_data[lk]) if isinstance(kl_data[lk], dict) else kl_data[lk]
+            mse_vals.append(mse_m.get(metric, float('nan')) if isinstance(mse_m, dict) else float('nan'))
+            kl_vals.append(kl_m.get(metric, float('nan')) if isinstance(kl_m, dict) else float('nan'))
+
+        ax.bar(x - width/2, mse_vals, width, label='MSE Probe', color='#4292c6')
+        ax.bar(x + width/2, kl_vals, width, label='KL Probe', color='#e6550d')
+        ax.set_xticks(x)
+        ax.set_xticklabels([k.replace('_', '\n') for k in layer_keys], fontsize=7)
+        ax.set_title(label, fontsize=10)
+        ax.legend(fontsize=7)
+        ax.grid(True, alpha=0.2, axis='y')
+
+    fig.suptitle('MSE vs KL Probe: Head-to-Head Comparison', fontsize=13, y=1.01)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_pca_compression_sweep(sweep_results: dict, save_path: str = None):
+    """Plot probe quality vs PCA dimension for both probes."""
+    k_values = sorted(sweep_results.keys())
+
+    mse_mse_vals = [sweep_results[k]['mse_metrics']['mse'] for k in k_values]
+    kl_mse_vals = [sweep_results[k]['kl_metrics']['mse'] for k in k_values]
+    mse_kl_vals = [sweep_results[k]['mse_metrics']['kl_divergence'] for k in k_values]
+    kl_kl_vals = [sweep_results[k]['kl_metrics']['kl_divergence'] for k in k_values]
+    mse_bkl_vals = [sweep_results[k]['mse_metrics']['boundary_kl'] for k in k_values]
+    kl_bkl_vals = [sweep_results[k]['kl_metrics']['boundary_kl'] for k in k_values]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+
+    # MSE in probability space
+    ax = axes[0]
+    ax.plot(k_values, mse_mse_vals, 'o-', color='#4292c6', label='MSE Probe')
+    ax.plot(k_values, kl_mse_vals, 's-', color='#e6550d', label='KL Probe')
+    ax.set_xlabel('PCA Dimensions (k)')
+    ax.set_ylabel('MSE')
+    ax.set_title('MSE in Probability Space')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale('log', base=2)
+
+    # KL divergence
+    ax = axes[1]
+    ax.plot(k_values, mse_kl_vals, 'o-', color='#4292c6', label='MSE Probe')
+    ax.plot(k_values, kl_kl_vals, 's-', color='#e6550d', label='KL Probe')
+    ax.set_xlabel('PCA Dimensions (k)')
+    ax.set_ylabel('KL Divergence')
+    ax.set_title('KL Divergence')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale('log', base=2)
+
+    # Boundary KL
+    ax = axes[2]
+    ax.plot(k_values, mse_bkl_vals, 'o-', color='#4292c6', label='MSE Probe')
+    ax.plot(k_values, kl_bkl_vals, 's-', color='#e6550d', label='KL Probe')
+    ax.set_xlabel('PCA Dimensions (k)')
+    ax.set_ylabel('Boundary KL')
+    ax.set_title('Boundary Fidelity (KL)')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale('log', base=2)
+
+    fig.suptitle('PCA Compression Sweep: MSE vs KL Probe', fontsize=13, y=1.02)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_recovered_simplices_comparison(mse_simplex_results: dict,
+                                        kl_simplex_results: dict,
+                                        layer_key: str = 'layer_2',
+                                        component_names: list = None,
+                                        save_path: str = None):
+    """Three-row simplex: MSE recovered (top), KL recovered (middle), ground truth (bottom)."""
+    if component_names is None:
+        component_names = COMP_NAMES_DEFAULT
+    if layer_key not in mse_simplex_results or layer_key not in kl_simplex_results:
+        print(f"Layer {layer_key} not in simplex results")
+        return
+
+    K = len(mse_simplex_results[layer_key]['per_component'])
+    fig, axes = plt.subplots(3, K, figsize=(4 * K, 12))
+
+    row_labels = ['MSE Probe\n(linear readout)', 'KL Probe\n(softmax-affine)',
+                  'Ground Truth\n(Bayesian beliefs)']
+
+    for k in range(K):
+        # Top row: MSE recovered
+        ax = axes[0, k]
+        mse_pred = mse_simplex_results[layer_key]['per_component'][k]['predicted_beliefs']
+        flat = mse_pred[:, 1:, :].reshape(-1, 3)
+        px, py = to_cartesian(flat)
+        ax.scatter(px, py, s=0.3, alpha=0.2, c=COMP_COLORS[k], rasterized=True)
+        draw_simplex_outline(ax)
+        ax.set_title(f'{component_names[k]}', fontsize=10)
+
+        # Middle row: KL recovered
+        ax = axes[1, k]
+        kl_pred = kl_simplex_results[layer_key]['per_component'][k]['predicted_beliefs']
+        flat = kl_pred[:, 1:, :].reshape(-1, 3)
+        px, py = to_cartesian(flat)
+        ax.scatter(px, py, s=0.3, alpha=0.2, c=COMP_COLORS[k], rasterized=True)
+        draw_simplex_outline(ax)
+
+        # Bottom row: ground truth
+        ax = axes[2, k]
+        gt = mse_simplex_results[layer_key]['per_component'][k]['beliefs']
+        flat = gt[:, 1:, :].reshape(-1, 3)
+        bx, by = to_cartesian(flat)
+        ax.scatter(bx, by, s=0.3, alpha=0.2, c=COMP_COLORS[k], rasterized=True)
+        draw_simplex_outline(ax)
+
+    for row, label in enumerate(row_labels):
+        axes[row, 0].set_ylabel(label, fontsize=10)
+
+    fig.suptitle(f'Recovered vs Ground-Truth Simplices ({layer_key})', fontsize=13, y=1.01)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_kl_layer_profile(mse_regression: dict, kl_regression: dict,
+                          component_names: list = None,
+                          save_path: str = None):
+    """Plot MSE probe R² and KL probe metrics vs layer side by side."""
+    if component_names is None:
+        component_names = COMP_NAMES_DEFAULT
+
+    mse_layer_data = mse_regression['per_layer']
+    kl_layer_data = kl_regression['per_layer']
+
+    layer_keys = _get_ordered_layer_keys(mse_layer_data)
+    layer_keys = [k for k in layer_keys if k in kl_layer_data]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+
+    x = range(len(layer_keys))
+
+    # Panel 1: R² (MSE probe) vs layer
+    ax = axes[0]
+    r2_overall = [mse_layer_data[k]['r2_overall'] for k in layer_keys]
+    ax.plot(x, r2_overall, 'ko-', label='Overall', linewidth=2)
+    for ci in range(len(component_names)):
+        r2_comp = [mse_layer_data[k]['r2_per_component'][ci] for k in layer_keys]
+        ax.plot(x, r2_comp, 'o-', color=COMP_COLORS[ci], label=component_names[ci])
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([k.replace('_', '\n') for k in layer_keys], fontsize=8)
+    ax.set_ylabel('R²')
+    ax.set_title('MSE Probe: R² by Layer')
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(-0.05, 1.05)
+
+    # Panel 2: KL divergence (KL probe) vs layer
+    ax = axes[1]
+    kl_overall = [kl_layer_data[k]['metrics']['kl_divergence'] for k in layer_keys]
+    ax.plot(x, kl_overall, 'ko-', label='Overall', linewidth=2)
+    for ci in range(len(component_names)):
+        kl_comp = [kl_layer_data[k]['metrics_per_component'][ci]['kl_divergence']
+                    for k in layer_keys]
+        ax.plot(x, kl_comp, 'o-', color=COMP_COLORS[ci], label=component_names[ci])
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([k.replace('_', '\n') for k in layer_keys], fontsize=8)
+    ax.set_ylabel('KL Divergence')
+    ax.set_title('KL Probe: KL Divergence by Layer')
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    # Panel 3: Boundary KL comparison
+    ax = axes[2]
+    bkl_kl = [kl_layer_data[k]['metrics']['boundary_kl'] for k in layer_keys]
+    ax.plot(x, bkl_kl, 's-', color='#e6550d', label='KL Probe', linewidth=2)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([k.replace('_', '\n') for k in layer_keys], fontsize=8)
+    ax.set_ylabel('Boundary KL')
+    ax.set_title('Boundary Fidelity by Layer')
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle('MSE vs KL Probe: Layer-by-Layer Profile', fontsize=13, y=1.02)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_compression_sweep(sweep_data: dict, save_path: str = None):
+    """Plot probe quality vs |S| for the compression experiment.
+
+    Args:
+        sweep_data: dict mapping str(n_states) -> {
+            'n_states', 'compression_ratio', 'mse_metrics', 'kl_metrics', ...
+        }
+    """
+    n_states_vals = sorted([int(k) for k in sweep_data.keys()])
+    ratios = [sweep_data[str(n)]['compression_ratio'] for n in n_states_vals]
+
+    mse_kl = [sweep_data[str(n)]['mse_metrics']['kl_divergence'] for n in n_states_vals]
+    kl_kl = [sweep_data[str(n)]['kl_metrics']['kl_divergence'] for n in n_states_vals]
+    mse_mse = [sweep_data[str(n)]['mse_metrics']['mse'] for n in n_states_vals]
+    kl_mse = [sweep_data[str(n)]['kl_metrics']['mse'] for n in n_states_vals]
+    mse_bkl = [sweep_data[str(n)]['mse_metrics']['boundary_kl'] for n in n_states_vals]
+    kl_bkl = [sweep_data[str(n)]['kl_metrics']['boundary_kl'] for n in n_states_vals]
+    mse_pr2 = [sweep_data[str(n)]['mse_metrics']['pairwise_r2_euclidean'] for n in n_states_vals]
+    kl_pr2 = [sweep_data[str(n)]['kl_metrics']['pairwise_r2_euclidean'] for n in n_states_vals]
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+
+    # KL divergence
+    ax = axes[0, 0]
+    ax.plot(n_states_vals, mse_kl, 'o-', color='#4292c6', label='MSE Probe', linewidth=2)
+    ax.plot(n_states_vals, kl_kl, 's-', color='#e6550d', label='KL Probe', linewidth=2)
+    ax.axvline(64, color='gray', linestyle='--', alpha=0.5, label='d_resid=64')
+    ax.set_xlabel('|S| (number of hidden states)')
+    ax.set_ylabel('KL Divergence')
+    ax.set_title('KL Divergence (lower is better)')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # MSE
+    ax = axes[0, 1]
+    ax.plot(n_states_vals, mse_mse, 'o-', color='#4292c6', label='MSE Probe', linewidth=2)
+    ax.plot(n_states_vals, kl_mse, 's-', color='#e6550d', label='KL Probe', linewidth=2)
+    ax.axvline(64, color='gray', linestyle='--', alpha=0.5, label='d_resid=64')
+    ax.set_xlabel('|S|')
+    ax.set_ylabel('MSE')
+    ax.set_title('MSE in Probability Space (lower is better)')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # Boundary KL
+    ax = axes[1, 0]
+    ax.plot(n_states_vals, mse_bkl, 'o-', color='#4292c6', label='MSE Probe', linewidth=2)
+    ax.plot(n_states_vals, kl_bkl, 's-', color='#e6550d', label='KL Probe', linewidth=2)
+    ax.axvline(64, color='gray', linestyle='--', alpha=0.5, label='d_resid=64')
+    ax.set_xlabel('|S|')
+    ax.set_ylabel('Boundary KL')
+    ax.set_title('Boundary Fidelity (lower is better)')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # Pairwise R²
+    ax = axes[1, 1]
+    ax.plot(n_states_vals, mse_pr2, 'o-', color='#4292c6', label='MSE Probe', linewidth=2)
+    ax.plot(n_states_vals, kl_pr2, 's-', color='#e6550d', label='KL Probe', linewidth=2)
+    ax.axvline(64, color='gray', linestyle='--', alpha=0.5, label='d_resid=64')
+    ax.set_xlabel('|S|')
+    ax.set_ylabel('Pairwise R² (Euclidean)')
+    ax.set_title('Pairwise Distance Correlation (higher is better)')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle('Genuine Compression: MSE vs KL Probe as |S| Increases\n'
+                 '(d_resid = 64 fixed; compression occurs when |S| > 64)',
+                 fontsize=13, y=1.02)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig

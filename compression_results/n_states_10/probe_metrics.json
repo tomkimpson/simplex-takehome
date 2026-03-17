@@ -1,0 +1,102 @@
+{
+  "embedding": {
+    "mse_metrics": {
+      "mse": 0.0009975599937064436,
+      "kl_divergence": 0.0338283134734039,
+      "pairwise_r2_euclidean": 0.496609830415319,
+      "pairwise_rho_kl": 0.7082428794504241,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0009975599937064436,
+      "boundary_kl": 0.0338283134734039
+    },
+    "kl_metrics": {
+      "mse": 0.0010886518012470999,
+      "kl_divergence": 0.040705791147123443,
+      "pairwise_r2_euclidean": 0.480519695235443,
+      "pairwise_rho_kl": 0.7024059712212849,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0010886518012470999,
+      "boundary_kl": 0.040705791147123443
+    }
+  },
+  "layer_0": {
+    "mse_metrics": {
+      "mse": 0.0005075045089059766,
+      "kl_divergence": 0.0239006234457901,
+      "pairwise_r2_euclidean": 0.7191318178708176,
+      "pairwise_rho_kl": 0.840996504989557,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0005075045089059766,
+      "boundary_kl": 0.0239006234457901
+    },
+    "kl_metrics": {
+      "mse": 0.0006030542161338392,
+      "kl_divergence": 0.02535511903235193,
+      "pairwise_r2_euclidean": 0.6796792486610612,
+      "pairwise_rho_kl": 0.832752752020869,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0006030542161338392,
+      "boundary_kl": 0.02535511903235193
+    }
+  },
+  "layer_1": {
+    "mse_metrics": {
+      "mse": 0.0004648253051715352,
+      "kl_divergence": 0.02358620780240907,
+      "pairwise_r2_euclidean": 0.7483945121394078,
+      "pairwise_rho_kl": 0.8527542241477858,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0004648253051715352,
+      "boundary_kl": 0.02358620780240907
+    },
+    "kl_metrics": {
+      "mse": 0.0005418891520570915,
+      "kl_divergence": 0.023077402158372028,
+      "pairwise_r2_euclidean": 0.7202171794190425,
+      "pairwise_rho_kl": 0.8524073805593382,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0005418891520570915,
+      "boundary_kl": 0.023077402158372028
+    }
+  },
+  "layer_2": {
+    "mse_metrics": {
+      "mse": 0.00046053572386591614,
+      "kl_divergence": 0.024614962087497284,
+      "pairwise_r2_euclidean": 0.7524269328456802,
+      "pairwise_rho_kl": 0.8534971847394159,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.00046053572386591614,
+      "boundary_kl": 0.024614962087497284
+    },
+    "kl_metrics": {
+      "mse": 0.0005239156841267044,
+      "kl_divergence": 0.022249055665387783,
+      "pairwise_r2_euclidean": 0.7289095948081405,
+      "pairwise_rho_kl": 0.8576463396540278,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0005239156841267044,
+      "boundary_kl": 0.022249055665387783
+    }
+  },
+  "final": {
+    "mse_metrics": {
+      "mse": 0.0004621981418079667,
+      "kl_divergence": 0.024082388364036235,
+      "pairwise_r2_euclidean": 0.752693298126747,
+      "pairwise_rho_kl": 0.847555607098396,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.0004621981418079667,
+      "boundary_kl": 0.024082388364036235
+    },
+    "kl_metrics": {
+      "mse": 0.00056014446707582,
+      "kl_divergence": 0.02429247984600969,
+      "pairwise_r2_euclidean": 0.7127883977855292,
+      "pairwise_rho_kl": 0.84406017693103,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 0.00056014446707582,
+      "boundary_kl": 0.02429247984600969
+    }
+  }
+}

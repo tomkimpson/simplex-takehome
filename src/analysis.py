@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import r2_score, accuracy_score
+from scipy.stats import spearmanr
 from pathlib import Path
 
 from .transformer import Mess3Transformer
@@ -400,6 +401,304 @@ def recovered_simplices(activations: dict, beliefs: np.ndarray,
                 'predicted_beliefs': pred_k.reshape(mask.sum(), L, 3),
                 'beliefs': beliefs_k,
                 'r2': r2_k,
+            })
+
+        results[layer_name] = {'per_component': per_comp}
+
+    return results
+
+
+def compute_probe_metrics(beliefs_true: np.ndarray, beliefs_pred: np.ndarray,
+                          eps: float = 1e-10,
+                          boundary_threshold: float = 0.05,
+                          n_pairs_distance: int = 10000,
+                          rng: np.random.Generator = None) -> dict:
+    """Compute the full suite of evaluation metrics comparing predicted vs true beliefs.
+
+    Returns dict with: mse, kl_divergence, pairwise_r2_euclidean,
+    pairwise_rho_kl, simplex_violation_rate, boundary_mse, boundary_kl.
+    """
+    if rng is None:
+        rng = np.random.default_rng(0)
+
+    N = len(beliefs_true)
+
+    # 1. MSE in probability space
+    mse = np.mean((beliefs_true - beliefs_pred) ** 2)
+
+    # 2. KL divergence D_KL(b_true || b_pred)
+    b_pred_safe = np.clip(beliefs_pred, eps, None)
+    b_true_safe = np.clip(beliefs_true, eps, None)
+    kl = np.mean(np.sum(b_true_safe * np.log(b_true_safe / b_pred_safe), axis=-1))
+
+    # 3. Pairwise Euclidean distance correlation
+    n_pairs = min(n_pairs_distance, N * (N - 1) // 2)
+    idx_i = rng.integers(0, N, size=n_pairs)
+    idx_j = rng.integers(0, N, size=n_pairs)
+    # Avoid self-pairs
+    same = idx_i == idx_j
+    idx_j[same] = (idx_j[same] + 1) % N
+
+    d_true_euc = np.linalg.norm(beliefs_true[idx_i] - beliefs_true[idx_j], axis=-1)
+    d_pred_euc = np.linalg.norm(beliefs_pred[idx_i] - beliefs_pred[idx_j], axis=-1)
+    corr_mat = np.corrcoef(d_true_euc, d_pred_euc)
+    pairwise_r2_euc = corr_mat[0, 1] ** 2
+
+    # 4. Pairwise KL distance correlation (Spearman)
+    def _pairwise_kl(p, q):
+        q_safe = np.clip(q, eps, None)
+        p_safe = np.clip(p, eps, None)
+        return np.sum(p_safe * np.log(p_safe / q_safe), axis=-1)
+
+    d_true_kl = _pairwise_kl(beliefs_true[idx_i], beliefs_true[idx_j])
+    d_pred_kl = _pairwise_kl(beliefs_pred[idx_i], beliefs_pred[idx_j])
+    rho_kl, _ = spearmanr(d_true_kl, d_pred_kl)
+
+    # 5. Simplex violation rate
+    has_negative = np.any(beliefs_pred < -1e-6, axis=-1)
+    bad_sum = np.abs(beliefs_pred.sum(axis=-1) - 1.0) > 0.01
+    violation_rate = np.mean(has_negative | bad_sum)
+
+    # 6. Boundary fidelity (beliefs where min component < threshold)
+    near_boundary = np.min(beliefs_true, axis=-1) < boundary_threshold
+    if near_boundary.sum() > 0:
+        boundary_mse = np.mean((beliefs_true[near_boundary] - beliefs_pred[near_boundary]) ** 2)
+        b_pred_bnd = np.clip(beliefs_pred[near_boundary], eps, None)
+        b_true_bnd = np.clip(beliefs_true[near_boundary], eps, None)
+        boundary_kl = np.mean(np.sum(b_true_bnd * np.log(b_true_bnd / b_pred_bnd), axis=-1))
+    else:
+        boundary_mse = float('nan')
+        boundary_kl = float('nan')
+
+    return {
+        'mse': mse,
+        'kl_divergence': kl,
+        'pairwise_r2_euclidean': pairwise_r2_euc,
+        'pairwise_rho_kl': rho_kl,
+        'simplex_violation_rate': violation_rate,
+        'boundary_mse': boundary_mse,
+        'boundary_kl': boundary_kl,
+    }
+
+
+def kl_belief_regression(activations: dict, beliefs: np.ndarray,
+                         component_labels: np.ndarray,
+                         processes: list,
+                         lr: float = 1e-3, n_epochs: int = 1000,
+                         batch_size: int = 4096,
+                         warm_start: bool = True,
+                         device: str = 'cpu') -> dict:
+    """KL (softmax-affine) probe from activations to oracle belief states.
+
+    Mirrors linear_belief_regression() structure for direct comparison.
+
+    Returns:
+        results: dict with 'per_layer' mapping layer -> {
+            'metrics': dict from compute_probe_metrics(),
+            'metrics_per_component': list of metric dicts,
+            'probe': trained SoftmaxAffineProbe,
+            'predictions': (N*L, 3) predicted beliefs,
+            'training_history': dict
+        }
+    """
+    from .kl_probe import train_kl_probe, predict_beliefs_kl
+
+    results = {'per_layer': {}}
+    K = len(processes)
+
+    for layer_name, acts in activations.items():
+        N, L, D = acts.shape
+        target_beliefs = beliefs[:, 1:L+1, :]
+
+        X = acts.reshape(-1, D)
+        Y = target_beliefs.reshape(-1, 3)
+        labels_flat = np.repeat(component_labels, L)
+
+        probe, history = train_kl_probe(
+            X, Y, n_states=3, lr=lr, n_epochs=n_epochs,
+            batch_size=batch_size, warm_start=warm_start,
+            device=device, verbose=False)
+
+        Y_pred = predict_beliefs_kl(probe, X, device=device)
+
+        metrics = compute_probe_metrics(Y, Y_pred)
+
+        metrics_per_comp = []
+        for k in range(K):
+            mask = labels_flat == k
+            if mask.sum() > 0:
+                m = compute_probe_metrics(Y[mask], Y_pred[mask])
+                metrics_per_comp.append(m)
+            else:
+                metrics_per_comp.append(None)
+
+        results['per_layer'][layer_name] = {
+            'metrics': metrics,
+            'metrics_per_component': metrics_per_comp,
+            'probe': probe,
+            'predictions': Y_pred,
+            'training_history': history,
+        }
+
+    return results
+
+
+def head_to_head_comparison(activations: dict, beliefs: np.ndarray,
+                            component_labels: np.ndarray,
+                            processes: list,
+                            mse_results: dict = None,
+                            kl_lr: float = 1e-3, kl_epochs: int = 1000,
+                            device: str = 'cpu') -> dict:
+    """Run MSE and KL probes on the same data and compare metrics.
+
+    This is the core function for Experiment 1.
+
+    Args:
+        mse_results: pre-computed results from linear_belief_regression()
+    """
+    # Get MSE predictions and compute metrics
+    mse_metrics = {}
+    if mse_results is None:
+        mse_results = linear_belief_regression(
+            activations, beliefs, component_labels, processes)
+
+    for layer_name, acts in activations.items():
+        N, L, D = acts.shape
+        target_beliefs = beliefs[:, 1:L+1, :]
+        X = acts.reshape(-1, D)
+        Y = target_beliefs.reshape(-1, 3)
+
+        if layer_name in mse_results['per_layer']:
+            reg = mse_results['per_layer'][layer_name]['model']
+            Y_pred_mse = reg.predict(X)
+            # Clip and normalize for fair metric comparison
+            Y_pred_mse_norm = np.clip(Y_pred_mse, 0, None)
+            row_sums = Y_pred_mse_norm.sum(axis=1, keepdims=True)
+            Y_pred_mse_norm = Y_pred_mse_norm / np.where(row_sums > 0, row_sums, 1)
+            mse_metrics[layer_name] = {
+                'metrics': compute_probe_metrics(Y, Y_pred_mse_norm),
+                'metrics_raw': compute_probe_metrics(Y, Y_pred_mse),
+            }
+
+    # Run KL probe
+    print("Running KL belief regression...")
+    kl_results = kl_belief_regression(
+        activations, beliefs, component_labels, processes,
+        lr=kl_lr, n_epochs=kl_epochs, device=device)
+
+    kl_metrics = {}
+    for layer_name in kl_results['per_layer']:
+        kl_metrics[layer_name] = kl_results['per_layer'][layer_name]['metrics']
+
+    return {
+        'mse': mse_metrics,
+        'kl': kl_metrics,
+        'kl_results': kl_results,
+    }
+
+
+def pca_compressed_probing(activations: dict, beliefs: np.ndarray,
+                           component_labels: np.ndarray,
+                           processes: list,
+                           k_values: list = None,
+                           layer_key: str = 'layer_2',
+                           kl_lr: float = 1e-3, kl_epochs: int = 1000,
+                           device: str = 'cpu') -> dict:
+    """Sweep PCA compression dimensions and compare MSE vs KL probes.
+
+    This is the core function for Experiment 2.
+    """
+    from .kl_probe import train_kl_probe, predict_beliefs_kl
+
+    if k_values is None:
+        k_values = [1, 2, 3, 4, 8, 16, 32, 64]
+
+    if layer_key not in activations:
+        print(f"Layer {layer_key} not in activations")
+        return {}
+
+    acts = activations[layer_key]
+    N, L, D = acts.shape
+    target_beliefs = beliefs[:, 1:L+1, :]
+
+    X = acts.reshape(-1, D)
+    Y = target_beliefs.reshape(-1, 3)
+
+    # Fit PCA on full data
+    max_k = min(max(k_values), D)
+    pca = PCA(n_components=max_k)
+    X_pca_full = pca.fit_transform(X)
+
+    results = {}
+    for k in k_values:
+        if k > max_k:
+            continue
+        print(f"  PCA k={k}...")
+        X_k = X_pca_full[:, :k]
+
+        # MSE probe
+        reg = LinearRegression()
+        reg.fit(X_k, Y)
+        Y_pred_mse = reg.predict(X_k)
+        Y_pred_mse_norm = np.clip(Y_pred_mse, 0, None)
+        row_sums = Y_pred_mse_norm.sum(axis=1, keepdims=True)
+        Y_pred_mse_norm = Y_pred_mse_norm / np.where(row_sums > 0, row_sums, 1)
+
+        # KL probe
+        probe, _ = train_kl_probe(
+            X_k, Y, n_states=3, lr=kl_lr, n_epochs=kl_epochs, device=device)
+        Y_pred_kl = predict_beliefs_kl(probe, X_k, device=device)
+
+        results[k] = {
+            'mse_metrics': compute_probe_metrics(Y, Y_pred_mse_norm),
+            'kl_metrics': compute_probe_metrics(Y, Y_pred_kl),
+        }
+
+    return results
+
+
+def recovered_simplices_kl(activations: dict, beliefs: np.ndarray,
+                           component_labels: np.ndarray,
+                           kl_lr: float = 1e-3, kl_epochs: int = 1000,
+                           device: str = 'cpu') -> dict:
+    """Recover belief simplices using per-component KL probes.
+
+    Mirrors recovered_simplices() but uses KL probes instead of linear regression.
+    """
+    from .kl_probe import train_kl_probe, predict_beliefs_kl
+
+    K = len(np.unique(component_labels))
+    results = {}
+
+    for layer_name, acts in activations.items():
+        N, L, D = acts.shape
+        target_beliefs = beliefs[:, 1:L+1, :]
+
+        per_comp = []
+        for k in range(K):
+            mask = component_labels == k
+            acts_k = acts[mask]
+            beliefs_k = target_beliefs[mask]
+
+            X_k = acts_k.reshape(-1, D)
+            Y_k = beliefs_k.reshape(-1, 3)
+
+            probe, _ = train_kl_probe(
+                X_k, Y_k, n_states=3, lr=kl_lr, n_epochs=kl_epochs,
+                device=device)
+            pred_k = predict_beliefs_kl(probe, X_k, device=device)
+
+            kl_div = np.mean(np.sum(
+                np.clip(Y_k, 1e-10, None) *
+                np.log(np.clip(Y_k, 1e-10, None) / np.clip(pred_k, 1e-10, None)),
+                axis=-1))
+            mse_val = np.mean((Y_k - pred_k) ** 2)
+
+            per_comp.append({
+                'predicted_beliefs': pred_k.reshape(mask.sum(), L, 3),
+                'beliefs': beliefs_k,
+                'kl_divergence': kl_div,
+                'mse': mse_val,
             })
 
         results[layer_name] = {'per_component': per_comp}

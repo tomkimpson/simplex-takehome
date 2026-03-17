@@ -1,0 +1,102 @@
+{
+  "embedding": {
+    "mse_metrics": {
+      "mse": 2.4104803258574156e-06,
+      "kl_divergence": 0.0025293158062908946,
+      "pairwise_r2_euclidean": 0.9413351846098229,
+      "pairwise_rho_kl": 0.8907838085571775,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 2.4104803258574156e-06,
+      "boundary_kl": 0.0025293158062908946
+    },
+    "kl_metrics": {
+      "mse": 2.7579338602335887e-06,
+      "kl_divergence": 0.002916811391152712,
+      "pairwise_r2_euclidean": 0.9236861214110464,
+      "pairwise_rho_kl": 0.823632995082783,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 2.7579338602335887e-06,
+      "boundary_kl": 0.002916811391152712
+    }
+  },
+  "layer_0": {
+    "mse_metrics": {
+      "mse": 4.369851283073488e-06,
+      "kl_divergence": 0.004902149268483514,
+      "pairwise_r2_euclidean": 0.7723236163510729,
+      "pairwise_rho_kl": 0.7335921908125786,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 4.369851283073488e-06,
+      "boundary_kl": 0.004902149268483514
+    },
+    "kl_metrics": {
+      "mse": 8.038199420319332e-06,
+      "kl_divergence": 0.008795375080787232,
+      "pairwise_r2_euclidean": 0.4635832370385053,
+      "pairwise_rho_kl": 0.5285659131314151,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 8.038199420319332e-06,
+      "boundary_kl": 0.008795375080787232
+    }
+  },
+  "layer_1": {
+    "mse_metrics": {
+      "mse": 1.1719498440622875e-05,
+      "kl_divergence": 0.01295335279635674,
+      "pairwise_r2_euclidean": 0.2124553675218993,
+      "pairwise_rho_kl": 0.28507900715636714,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 1.1719498440622875e-05,
+      "boundary_kl": 0.01295335279635674
+    },
+    "kl_metrics": {
+      "mse": 8.131485228793456e-06,
+      "kl_divergence": 0.00886147419578391,
+      "pairwise_r2_euclidean": 0.46222337877003083,
+      "pairwise_rho_kl": 0.5368588941441611,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 8.131485228793456e-06,
+      "boundary_kl": 0.00886147419578391
+    }
+  },
+  "layer_2": {
+    "mse_metrics": {
+      "mse": 1.3433727361882692e-05,
+      "kl_divergence": 0.014841002967107336,
+      "pairwise_r2_euclidean": 0.13801751904394546,
+      "pairwise_rho_kl": 0.2508541213507257,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 1.3433727361882692e-05,
+      "boundary_kl": 0.014841002967107336
+    },
+    "kl_metrics": {
+      "mse": 9.229444976715749e-06,
+      "kl_divergence": 0.010083808795498212,
+      "pairwise_r2_euclidean": 0.3799238216293025,
+      "pairwise_rho_kl": 0.4699017900513361,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 9.229444976715749e-06,
+      "boundary_kl": 0.010083808795498212
+    }
+  },
+  "final": {
+    "mse_metrics": {
+      "mse": 7.132876971398036e-06,
+      "kl_divergence": 0.01100847642026821,
+      "pairwise_r2_euclidean": 0.4701983244807961,
+      "pairwise_rho_kl": 0.5664605780909613,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 7.132876971398036e-06,
+      "boundary_kl": 0.01100847642026821
+    },
+    "kl_metrics": {
+      "mse": 1.7991348208298663e-05,
+      "kl_divergence": 0.019786993507793126,
+      "pairwise_r2_euclidean": 0.021575033121467878,
+      "pairwise_rho_kl": 0.07645166576503022,
+      "simplex_violation_rate": 0.0,
+      "boundary_mse": 1.7991348208298663e-05,
+      "boundary_kl": 0.019786993507793126
+    }
+  }
+}
