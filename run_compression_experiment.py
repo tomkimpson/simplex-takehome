@@ -23,17 +23,20 @@ from src.dataset import GeneralHMMDataset
 from src.transformer import Mess3Transformer
 from src.belief import compute_beliefs_general
 from src.kl_probe import train_kl_probe, predict_beliefs_kl
-from src.analysis import compute_probe_metrics
+from src.analysis import (compute_probe_metrics, compute_raw_geometry_metrics,
+                          compute_effective_rank)
 
 
-def train_on_hmm(model, train_loader, eval_loader, config, device='cpu'):
+def train_on_hmm(model, train_loader, eval_loader, config, device='cpu',
+                 start_epoch=0):
     """Train transformer on general HMM data."""
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
 
     history = {'train_loss': [], 'eval_loss': []}
+    total_epochs = start_epoch + config.n_epochs
 
-    for epoch in range(config.n_epochs):
+    for epoch in range(start_epoch, total_epochs):
         model.train()
         epoch_loss = 0.0
         n_batches = 0
@@ -56,7 +59,7 @@ def train_on_hmm(model, train_loader, eval_loader, config, device='cpu'):
         avg_train = epoch_loss / n_batches
         history['train_loss'].append(avg_train)
 
-        if (epoch + 1) % config.eval_every == 0 or epoch == config.n_epochs - 1:
+        if (epoch + 1) % config.eval_every == 0 or epoch == total_epochs - 1:
             model.eval()
             eval_loss = 0.0
             eval_batches = 0
@@ -72,7 +75,7 @@ def train_on_hmm(model, train_loader, eval_loader, config, device='cpu'):
 
             avg_eval = eval_loss / eval_batches
             history['eval_loss'].append((epoch, avg_eval))
-            print(f"  Epoch {epoch+1:3d}/{config.n_epochs}: "
+            print(f"  Epoch {epoch+1:3d}/{total_epochs}: "
                   f"train={avg_train:.4f}  eval={avg_eval:.4f}")
 
     return history
@@ -111,8 +114,8 @@ def extract_and_probe(model, dataset, hmm, config, device='cpu'):
 
     activations = {k: np.concatenate(v, axis=0) for k, v in all_activations.items()}
 
-    # Run probes on each layer
-    print("  Running probes...")
+    # Run probes and geometry analysis on each layer
+    print("  Running probes and geometry analysis...")
     results_per_layer = {}
     n_states = hmm.n_states
 
@@ -142,32 +145,42 @@ def extract_and_probe(model, dataset, hmm, config, device='cpu'):
 
         kl_metrics = compute_probe_metrics(Y, Y_pred_kl)
 
+        # Probe-free geometry metrics (the primary evidence)
+        raw_geometry = compute_raw_geometry_metrics(acts, target_beliefs)
+
+        # Effective dimensionality
+        eff_rank = compute_effective_rank(acts)
+
         results_per_layer[layer_name] = {
             'mse_metrics': mse_metrics,
             'kl_metrics': kl_metrics,
+            'raw_geometry': raw_geometry,
+            'effective_rank': eff_rank,
         }
 
-        print(f"    {layer_name}: MSE_kl={mse_metrics['kl_divergence']:.4f}  "
-              f"KL_kl={kl_metrics['kl_divergence']:.4f}  "
-              f"MSE_bkl={mse_metrics['boundary_kl']:.4f}  "
-              f"KL_bkl={kl_metrics['boundary_kl']:.4f}")
+        print(f"    {layer_name}: "
+              f"euc_align={raw_geometry['euclidean_alignment']:.3f}  "
+              f"kl_align={raw_geometry['kl_alignment']:.3f}  "
+              f"gap={raw_geometry['alignment_gap']:+.3f}  "
+              f"eff_rank={eff_rank:.1f}")
 
     return results_per_layer
 
 
 def run_single_point(n_states: int, config: CompressionExperimentConfig,
-                     device: str = 'cpu'):
+                     device: str = 'cpu', resume: bool = False):
     """Train transformer and evaluate probes for a single |S| value."""
+    seed = config.seed
     print(f"\n{'='*60}")
     print(f"|S| = {n_states}  (d_resid = {config.d_model}, "
-          f"compression ratio = {n_states/config.d_model:.2f})")
+          f"compression ratio = {n_states/config.d_model:.2f}, seed={seed})")
     print(f"{'='*60}")
 
-    out_dir = Path(f'compression_results/n_states_{n_states}')
+    out_dir = Path(f'compression_results/n_states_{n_states}/seed_{seed}')
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate HMM
-    rng = np.random.default_rng(config.seed)
+    # Generate HMM (seed determines the HMM structure)
+    rng = np.random.default_rng(seed)
     print(f"Generating random HMM with {n_states} states...")
     hmm = random_sparse_hmm(n_states, n_tokens=config.n_tokens, rng=rng)
     entropy = hmm.entropy_rate()
@@ -179,9 +192,9 @@ def run_single_point(n_states: int, config: CompressionExperimentConfig,
 
     # Create datasets
     print("Creating datasets...")
-    rng_train = np.random.default_rng(config.seed + 1)
-    rng_eval = np.random.default_rng(config.seed + 2)
-    rng_analysis = np.random.default_rng(config.seed + 3)
+    rng_train = np.random.default_rng(seed + 1)
+    rng_eval = np.random.default_rng(seed + 2)
+    rng_analysis = np.random.default_rng(seed + 3)
 
     train_dataset = GeneralHMMDataset(
         hmm, config.n_train_sequences, config.seq_length, rng_train)
@@ -195,7 +208,7 @@ def run_single_point(n_states: int, config: CompressionExperimentConfig,
     eval_loader = DataLoader(
         eval_dataset, batch_size=config.batch_size, shuffle=False, num_workers=0)
 
-    # Build and train transformer
+    # Build transformer
     print("Training transformer...")
     model = Mess3Transformer(
         vocab_size=config.vocab_size,
@@ -207,13 +220,38 @@ def run_single_point(n_states: int, config: CompressionExperimentConfig,
         dropout=config.dropout,
     )
 
-    history = train_on_hmm(model, train_loader, eval_loader, config, device=device)
+    # Resume from checkpoint if requested
+    start_epoch = 0
+    if resume:
+        ckpt_path = out_dir / 'model_final.pt'
+        if ckpt_path.exists():
+            ckpt = torch.load(str(ckpt_path), map_location='cpu',
+                              weights_only=False)
+            model.load_state_dict(ckpt['model_state_dict'])
+            start_epoch = ckpt.get('epochs_trained', 0)
+            print(f"  Resumed from checkpoint at epoch {start_epoch}")
+        else:
+            print("  No checkpoint found, training from scratch")
+
+    history = train_on_hmm(model, train_loader, eval_loader, config,
+                           device=device, start_epoch=start_epoch)
+
+    # Convergence diagnostic
+    final_eval = history['eval_loss'][-1][1] if history['eval_loss'] else float('nan')
+    convergence_gap = (final_eval - entropy) / entropy if entropy > 0 else float('nan')
+    total_epochs = start_epoch + len(history['train_loss'])
+
+    if convergence_gap > config.convergence_threshold:
+        print(f"  WARNING: convergence gap {convergence_gap:.1%} exceeds "
+              f"threshold {config.convergence_threshold:.0%}. "
+              f"Model may be undertrained.")
 
     # Save checkpoint
     torch.save({
         'model_state_dict': model.state_dict(),
         'n_states': n_states,
         'entropy_rate': entropy,
+        'epochs_trained': total_epochs,
     }, str(out_dir / 'model_final.pt'))
 
     # Save training history
@@ -222,6 +260,8 @@ def run_single_point(n_states: int, config: CompressionExperimentConfig,
             'train_loss': history['train_loss'],
             'eval_loss': history['eval_loss'],
             'entropy_rate_nats': entropy,
+            'epochs_trained': total_epochs,
+            'convergence_gap': convergence_gap,
         }, f, indent=2)
 
     # Extract activations and run probes
@@ -236,102 +276,72 @@ def run_single_point(n_states: int, config: CompressionExperimentConfig,
     # Determine best layer (lowest KL for KL probe)
     best_layer = min(probe_results,
                      key=lambda k: probe_results[k]['kl_metrics']['kl_divergence'])
-    final_eval = history['eval_loss'][-1][1] if history['eval_loss'] else float('nan')
+
+    # Find best layer for raw geometry (highest KL alignment)
+    best_geo_layer = max(
+        probe_results,
+        key=lambda k: probe_results[k]['raw_geometry']['kl_alignment'])
 
     summary = {
         'n_states': n_states,
         'd_model': config.d_model,
+        'seed': seed,
         'compression_ratio': n_states / config.d_model,
         'entropy_rate_nats': entropy,
         'final_eval_loss': final_eval,
+        'convergence_gap': convergence_gap,
+        'epochs_trained': total_epochs,
         'best_layer': best_layer,
+        'best_geo_layer': best_geo_layer,
         'best_layer_mse_metrics': probe_results[best_layer]['mse_metrics'],
         'best_layer_kl_metrics': probe_results[best_layer]['kl_metrics'],
+        'best_layer_raw_geometry': probe_results[best_geo_layer]['raw_geometry'],
+        'best_layer_effective_rank': probe_results[best_geo_layer]['effective_rank'],
         'all_layers': probe_results,
     }
 
-    print(f"\nBest layer: {best_layer}")
+    print(f"\nBest probe layer: {best_layer}")
+    print(f"  Convergence gap: {convergence_gap:.1%}")
     print(f"  MSE probe KL: {summary['best_layer_mse_metrics']['kl_divergence']:.6f}")
     print(f"  KL  probe KL: {summary['best_layer_kl_metrics']['kl_divergence']:.6f}")
-    print(f"  MSE probe boundary KL: {summary['best_layer_mse_metrics']['boundary_kl']:.6f}")
-    print(f"  KL  probe boundary KL: {summary['best_layer_kl_metrics']['boundary_kl']:.6f}")
+    geo = probe_results[best_geo_layer]['raw_geometry']
+    print(f"  Raw geometry ({best_geo_layer}): "
+          f"euc={geo['euclidean_alignment']:.3f}  "
+          f"kl={geo['kl_alignment']:.3f}  "
+          f"gap={geo['alignment_gap']:+.3f}")
 
     return summary
 
 
 def run_sweep(config: CompressionExperimentConfig, device: str = 'cpu'):
-    """Run the full |S| sweep."""
+    """Run the full |S| sweep across all seeds."""
+    from copy import deepcopy
+
+    seeds = [config.seed + i * 1000 for i in range(config.n_seeds)]
     results = {}
 
     for n_states in config.n_states_sweep:
-        config_copy = CompressionExperimentConfig(
-            n_states=n_states,
-            n_tokens=config.n_tokens,
-            hmm_sparsity=config.hmm_sparsity,
-            hmm_dirichlet_alpha=config.hmm_dirichlet_alpha,
-            seq_length=config.seq_length,
-            n_train_sequences=config.n_train_sequences,
-            n_eval_sequences=config.n_eval_sequences,
-            vocab_size=config.vocab_size,
-            d_model=config.d_model,
-            n_layers=config.n_layers,
-            n_heads=config.n_heads,
-            d_mlp=config.d_mlp,
-            dropout=config.dropout,
-            batch_size=config.batch_size,
-            learning_rate=config.learning_rate,
-            n_epochs=config.n_epochs,
-            eval_every=config.eval_every,
-            kl_probe_lr=config.kl_probe_lr,
-            kl_probe_epochs=config.kl_probe_epochs,
-            n_analysis=config.n_analysis,
-            seed=config.seed,
-        )
-        summary = run_single_point(n_states, config_copy, device=device)
-        results[n_states] = summary
-
-    # Save sweep summary
-    out_dir = Path('compression_results')
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    # Convert for JSON serialization
-    sweep_data = {}
-    for n_states, summary in results.items():
-        sweep_data[str(n_states)] = {
-            'n_states': summary['n_states'],
-            'compression_ratio': summary['compression_ratio'],
-            'entropy_rate_nats': summary['entropy_rate_nats'],
-            'final_eval_loss': summary['final_eval_loss'],
-            'best_layer': summary['best_layer'],
-            'mse_metrics': summary['best_layer_mse_metrics'],
-            'kl_metrics': summary['best_layer_kl_metrics'],
-        }
-
-    with open(str(out_dir / 'sweep_summary.json'), 'w') as f:
-        json.dump(sweep_data, f, indent=2)
+        for seed in seeds:
+            config_copy = deepcopy(config)
+            config_copy.n_states = n_states
+            config_copy.seed = seed
+            summary = run_single_point(n_states, config_copy, device=device)
+            results[(n_states, seed)] = summary
 
     # Print summary table
     print("\n" + "=" * 80)
     print("COMPRESSION SWEEP SUMMARY")
     print("=" * 80)
-    print(f"{'|S|':>5} {'ratio':>6} {'entropy':>8} {'eval_loss':>10} "
-          f"{'MSE_kl':>10} {'KL_kl':>10} {'MSE_bkl':>10} {'KL_bkl':>10}")
+    print(f"{'|S|':>5} {'seed':>6} {'ratio':>6} {'gap%':>6} "
+          f"{'MSE_kl':>10} {'KL_kl':>10}")
     print("-" * 80)
-    for n_states in sorted(results.keys()):
-        s = results[n_states]
+    for (n_states, seed) in sorted(results.keys()):
+        s = results[(n_states, seed)]
         mm = s['best_layer_mse_metrics']
         km = s['best_layer_kl_metrics']
-        print(f"  {n_states:>5} {s['compression_ratio']:>6.2f} "
-              f"{s['entropy_rate_nats']:>8.4f} {s['final_eval_loss']:>10.4f} "
-              f"{mm['kl_divergence']:>10.4f} {km['kl_divergence']:>10.4f} "
-              f"{mm['boundary_kl']:>10.4f} {km['boundary_kl']:>10.4f}")
-
-    # Generate plot
-    from src.plots import plot_compression_sweep
-    fig_dir = Path('compression_results/figures')
-    fig_dir.mkdir(parents=True, exist_ok=True)
-    plot_compression_sweep(sweep_data,
-                           save_path=str(fig_dir / 'compression_sweep.png'))
+        print(f"  {n_states:>5} {seed:>6} {s['compression_ratio']:>6.2f} "
+              f"{s['convergence_gap']:>5.1%} "
+              f"{mm['kl_divergence']:>10.4f} {km['kl_divergence']:>10.4f}")
 
     return results
 
@@ -351,10 +361,16 @@ def main():
                         help='Number of sequences for probe analysis')
     parser.add_argument('--kl-epochs', type=int, default=None,
                         help='KL probe training epochs')
+    parser.add_argument('--kl-lr', type=float, default=None,
+                        help='KL probe learning rate')
     parser.add_argument('--seq-length', type=int, default=None,
                         help='Override sequence length')
     parser.add_argument('--n-train', type=int, default=None,
                         help='Override number of training sequences')
+    parser.add_argument('--seed', type=int, default=None,
+                        help='Random seed (default: from config)')
+    parser.add_argument('--resume', action='store_true',
+                        help='Resume training from saved checkpoint')
     args = parser.parse_args()
 
     config = CompressionExperimentConfig()
@@ -364,10 +380,14 @@ def main():
         config.n_analysis = args.n_analysis
     if args.kl_epochs is not None:
         config.kl_probe_epochs = args.kl_epochs
+    if args.kl_lr is not None:
+        config.kl_probe_lr = args.kl_lr
     if args.seq_length is not None:
         config.seq_length = args.seq_length
     if args.n_train is not None:
         config.n_train_sequences = args.n_train
+    if args.seed is not None:
+        config.seed = args.seed
 
     device_str = args.device or 'cpu'
 
@@ -375,7 +395,8 @@ def main():
         run_sweep(config, device=device_str)
     elif args.n_states is not None:
         config.n_states = args.n_states
-        run_single_point(args.n_states, config, device=device_str)
+        run_single_point(args.n_states, config, device=device_str,
+                         resume=args.resume)
     else:
         parser.print_help()
         print("\nProvide --n-states N or --sweep")

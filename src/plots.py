@@ -812,3 +812,269 @@ def plot_compression_sweep(sweep_data: dict, save_path: str = None):
     plt.tight_layout()
     _save_fig(fig, save_path)
     return fig
+
+
+# --- Compression Sweep Aggregated Plots (from aggregate_compression_results.py) ---
+
+def _get_best_layer_metrics(summary_entry: dict, metric_path: str):
+    """Extract metrics from the best layer (highest KL alignment) for a sweep entry."""
+    per_layer = summary_entry['per_layer']
+    # Find layer with highest mean KL alignment
+    best_layer = max(
+        per_layer,
+        key=lambda l: per_layer[l].get('raw_geometry', {}).get(
+            'kl_alignment', {}).get('mean', -1))
+    # Navigate the metric path (e.g. 'raw_geometry.kl_alignment')
+    parts = metric_path.split('.')
+    val = per_layer[best_layer]
+    for p in parts:
+        val = val[p]
+    return val, best_layer
+
+
+def plot_money_plot(summary: dict, save_path: str = None):
+    """The central figure: KL alignment vs Euclidean alignment across compression ratios.
+
+    Args:
+        summary: aggregated sweep summary from aggregate_compression_results.py
+    """
+    n_states_vals = sorted(summary.keys())
+    ratios = [summary[n]['compression_ratio'] for n in n_states_vals]
+
+    euc_means, euc_errs = [], []
+    kl_means, kl_errs = [], []
+
+    for n in n_states_vals:
+        euc_stats, _ = _get_best_layer_metrics(summary[n], 'raw_geometry.euclidean_alignment')
+        kl_stats, _ = _get_best_layer_metrics(summary[n], 'raw_geometry.kl_alignment')
+        euc_means.append(euc_stats['mean'])
+        euc_errs.append(euc_stats['stderr'])
+        kl_means.append(kl_stats['mean'])
+        kl_errs.append(kl_stats['stderr'])
+
+    euc_means = np.array(euc_means)
+    euc_errs = np.array(euc_errs)
+    kl_means = np.array(kl_means)
+    kl_errs = np.array(kl_errs)
+    ratios = np.array(ratios)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    # Left panel: raw alignment values
+    ax1.plot(ratios, euc_means, 'o-', color='#4292c6', linewidth=2,
+             label='Euclidean alignment')
+    ax1.fill_between(ratios, euc_means - euc_errs, euc_means + euc_errs,
+                     color='#4292c6', alpha=0.2)
+    ax1.plot(ratios, kl_means, 's-', color='#e6550d', linewidth=2,
+             label='KL alignment')
+    ax1.fill_between(ratios, kl_means - kl_errs, kl_means + kl_errs,
+                     color='#e6550d', alpha=0.2)
+
+    ax1.axvline(1.0, color='gray', linestyle='--', alpha=0.6,
+                label='$|S| = d_{\\mathrm{model}}$')
+    ax1.set_xscale('log')
+    ax1.set_xlabel('Compression ratio ($|S| / d_{\\mathrm{model}}$)')
+    ax1.set_ylabel('Spearman $\\rho$ (activation dist. vs belief dist.)')
+    ax1.set_title('What geometry does the transformer encode?')
+    ax1.legend(fontsize=9)
+    ax1.grid(True, alpha=0.3)
+
+    # Right panel: the gap (KL - Euclidean alignment)
+    gap_means = kl_means - euc_means
+    gap_errs = np.sqrt(kl_errs**2 + euc_errs**2)
+
+    ax2.plot(ratios, gap_means, 'D-', color='#2ca02c', linewidth=2)
+    ax2.fill_between(ratios, gap_means - gap_errs, gap_means + gap_errs,
+                     color='#2ca02c', alpha=0.2)
+    ax2.axhline(0, color='gray', linestyle='-', alpha=0.4)
+    ax2.axvline(1.0, color='gray', linestyle='--', alpha=0.6,
+                label='$|S| = d_{\\mathrm{model}}$')
+    ax2.set_xscale('log')
+    ax2.set_xlabel('Compression ratio ($|S| / d_{\\mathrm{model}}$)')
+    ax2.set_ylabel('KL alignment $-$ Euclidean alignment')
+    ax2.set_title('Information-geometric advantage')
+    ax2.legend(fontsize=9)
+    ax2.grid(True, alpha=0.3)
+
+    fig.suptitle('Probe-Free Geometry: Transformers Prefer Information Geometry '
+                 'Under Compression', fontsize=12, y=1.02)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_probe_comparison_sweep(summary: dict, save_path: str = None):
+    """Supporting evidence: probe-based metrics across compression ratios.
+
+    Compares KL probe's pairwise_rho_kl vs MSE probe's pairwise_r2_euclidean.
+    """
+    n_states_vals = sorted(summary.keys())
+    ratios = [summary[n]['compression_ratio'] for n in n_states_vals]
+
+    mse_euc_means, mse_euc_errs = [], []
+    kl_kl_means, kl_kl_errs = [], []
+
+    for n in n_states_vals:
+        mse_stats, _ = _get_best_layer_metrics(
+            summary[n], 'probe_metrics.mse_pairwise_r2_euclidean')
+        kl_stats, _ = _get_best_layer_metrics(
+            summary[n], 'probe_metrics.kl_pairwise_rho_kl')
+        mse_euc_means.append(mse_stats['mean'])
+        mse_euc_errs.append(mse_stats['stderr'])
+        kl_kl_means.append(kl_stats['mean'])
+        kl_kl_errs.append(kl_stats['stderr'])
+
+    mse_euc_means = np.array(mse_euc_means)
+    mse_euc_errs = np.array(mse_euc_errs)
+    kl_kl_means = np.array(kl_kl_means)
+    kl_kl_errs = np.array(kl_kl_errs)
+    ratios = np.array(ratios)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    ax.plot(ratios, mse_euc_means, 'o-', color='#4292c6', linewidth=2,
+            label='MSE probe: pairwise R$^2$ (Euclidean)')
+    ax.fill_between(ratios, mse_euc_means - mse_euc_errs,
+                    mse_euc_means + mse_euc_errs, color='#4292c6', alpha=0.2)
+    ax.plot(ratios, kl_kl_means, 's-', color='#e6550d', linewidth=2,
+            label='KL probe: pairwise $\\rho$ (KL)')
+    ax.fill_between(ratios, kl_kl_means - kl_kl_errs,
+                    kl_kl_means + kl_kl_errs, color='#e6550d', alpha=0.2)
+
+    ax.axvline(1.0, color='gray', linestyle='--', alpha=0.6,
+               label='$|S| = d_{\\mathrm{model}}$')
+    ax.set_xscale('log')
+    ax.set_xlabel('Compression ratio ($|S| / d_{\\mathrm{model}}$)')
+    ax.set_ylabel('Structure preservation')
+    ax.set_title('Probe Comparison: Each Probe with Its Natural Metric')
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_convergence_diagnostics(runs: dict, save_path: str = None):
+    """Training loss curves for all n_states values with entropy rate baselines."""
+    n_states_vals = sorted(runs.keys())
+    colors = plt.cm.viridis(np.linspace(0.1, 0.9, len(n_states_vals)))
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    for idx, n in enumerate(n_states_vals):
+        for run in runs[n]:
+            losses = run['train_loss']
+            if losses:
+                ax.plot(range(len(losses)), losses, color=colors[idx],
+                        alpha=0.5, linewidth=0.8)
+        # Plot entropy rate as horizontal line
+        entropy = runs[n][0]['entropy_rate_nats']
+        ax.axhline(entropy, color=colors[idx], linestyle='--', alpha=0.6,
+                   linewidth=1)
+        # Label the last point
+        ax.text(len(runs[n][0]['train_loss']) + 1, entropy,
+                f'$|S|$={n}', fontsize=7, color=colors[idx], va='center')
+
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Training Loss (nats)')
+    ax.set_title('Training Convergence (solid=loss, dashed=entropy rate)')
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_layer_structure(summary: dict, selected_n_states: list = None,
+                         save_path: str = None):
+    """Layer-wise KL vs Euclidean alignment for selected n_states values."""
+    if selected_n_states is None:
+        all_n = sorted(summary.keys())
+        # Pick ~4 representative values spanning the range
+        if len(all_n) <= 4:
+            selected_n_states = all_n
+        else:
+            indices = np.linspace(0, len(all_n) - 1, 4, dtype=int)
+            selected_n_states = [all_n[i] for i in indices]
+
+    colors = plt.cm.viridis(np.linspace(0.2, 0.9, len(selected_n_states)))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    for idx, n in enumerate(selected_n_states):
+        if n not in summary:
+            continue
+        per_layer = summary[n]['per_layer']
+        layer_keys = _get_ordered_layer_keys(per_layer)
+
+        euc_vals = []
+        kl_vals = []
+        for lk in layer_keys:
+            rg = per_layer[lk].get('raw_geometry', {})
+            euc_vals.append(rg.get('euclidean_alignment', {}).get('mean', float('nan')))
+            kl_vals.append(rg.get('kl_alignment', {}).get('mean', float('nan')))
+
+        ratio = summary[n]['compression_ratio']
+        label = f'$|S|$={n} (ratio={ratio:.2f})'
+
+        ax1.plot(range(len(layer_keys)), euc_vals, 'o-', color=colors[idx],
+                 label=label)
+        ax2.plot(range(len(layer_keys)), kl_vals, 's-', color=colors[idx],
+                 label=label)
+
+    for ax, title in [(ax1, 'Euclidean alignment'), (ax2, 'KL alignment')]:
+        if layer_keys:
+            ax.set_xticks(range(len(layer_keys)))
+            ax.set_xticklabels([k.replace('_', '\n') for k in layer_keys],
+                               fontsize=7)
+        ax.set_xlabel('Layer')
+        ax.set_ylabel('Spearman $\\rho$')
+        ax.set_title(title)
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.3)
+
+    fig.suptitle('Layer-Wise Geometry Alignment', fontsize=12, y=1.02)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig
+
+
+def plot_effective_dimensionality(summary: dict, save_path: str = None):
+    """Effective rank vs compression ratio."""
+    n_states_vals = sorted(summary.keys())
+    ratios = [summary[n]['compression_ratio'] for n in n_states_vals]
+
+    eff_rank_means = []
+    eff_rank_errs = []
+
+    for n in n_states_vals:
+        stats, _ = _get_best_layer_metrics(summary[n], 'effective_rank')
+        eff_rank_means.append(stats['mean'])
+        eff_rank_errs.append(stats['stderr'])
+
+    eff_rank_means = np.array(eff_rank_means)
+    eff_rank_errs = np.array(eff_rank_errs)
+    ratios = np.array(ratios)
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    ax.plot(ratios, eff_rank_means, 'o-', color='#756bb1', linewidth=2)
+    ax.fill_between(ratios, eff_rank_means - eff_rank_errs,
+                    eff_rank_means + eff_rank_errs, color='#756bb1', alpha=0.2)
+
+    ax.axvline(1.0, color='gray', linestyle='--', alpha=0.6,
+               label='$|S| = d_{\\mathrm{model}}$')
+    ax.axhline(64, color='gray', linestyle=':', alpha=0.4,
+               label='$d_{\\mathrm{model}} = 64$')
+
+    ax.set_xscale('log')
+    ax.set_xlabel('Compression ratio ($|S| / d_{\\mathrm{model}}$)')
+    ax.set_ylabel('Effective rank')
+    ax.set_title('How Much of the Residual Stream Does the Model Use?')
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    _save_fig(fig, save_path)
+    return fig

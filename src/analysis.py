@@ -706,6 +706,84 @@ def recovered_simplices_kl(activations: dict, beliefs: np.ndarray,
     return results
 
 
+def compute_effective_rank(activations: np.ndarray) -> float:
+    """Compute effective rank of an activation matrix (Roy-Vetterli definition).
+
+    Effective rank = sum(sigma)^2 / sum(sigma^2), where sigma are singular values.
+    This measures how many dimensions the model actually uses.
+    """
+    if activations.ndim == 3:
+        N, L, D = activations.shape
+        activations = activations.reshape(-1, D)
+    _, sigma, _ = np.linalg.svd(activations, full_matrices=False)
+    return float((sigma.sum() ** 2) / (sigma ** 2).sum())
+
+
+def compute_raw_geometry_metrics(activations: np.ndarray,
+                                 beliefs_true: np.ndarray,
+                                 n_pairs: int = 10000,
+                                 eps: float = 1e-10,
+                                 rng: np.random.Generator = None) -> dict:
+    """Probe-free measurement of what geometry the transformer natively encodes.
+
+    Computes pairwise Euclidean distances in activation space and correlates
+    them with both pairwise Euclidean distances and pairwise KL divergences
+    in belief space. If the activation distances correlate more strongly with
+    KL divergences than Euclidean distances, the transformer natively
+    represents information geometry.
+
+    Args:
+        activations: (N, D) or (N, L, D) activation matrix
+        beliefs_true: (N, S) or (N, L, S) true belief vectors
+        n_pairs: number of random pairs to sample
+        eps: numerical floor for KL computation
+        rng: random number generator
+
+    Returns:
+        dict with:
+            'euclidean_alignment': Spearman(d_act, d_euc_belief)
+            'kl_alignment': Spearman(d_act, d_kl_belief)
+            'alignment_gap': kl_alignment - euclidean_alignment
+    """
+    if rng is None:
+        rng = np.random.default_rng(0)
+
+    # Flatten if 3D
+    if activations.ndim == 3:
+        N, L, D = activations.shape
+        activations = activations.reshape(-1, D)
+        beliefs_true = beliefs_true.reshape(-1, beliefs_true.shape[-1])
+    N = len(activations)
+
+    # Sample random pairs
+    n_pairs = min(n_pairs, N * (N - 1) // 2)
+    idx_i = rng.integers(0, N, size=n_pairs)
+    idx_j = rng.integers(0, N, size=n_pairs)
+    same = idx_i == idx_j
+    idx_j[same] = (idx_j[same] + 1) % N
+
+    # Activation Euclidean distances
+    d_act = np.linalg.norm(activations[idx_i] - activations[idx_j], axis=-1)
+
+    # Belief Euclidean distances
+    d_euc = np.linalg.norm(beliefs_true[idx_i] - beliefs_true[idx_j], axis=-1)
+
+    # Belief KL divergences
+    p = np.clip(beliefs_true[idx_i], eps, None)
+    q = np.clip(beliefs_true[idx_j], eps, None)
+    d_kl = np.sum(p * np.log(p / q), axis=-1)
+
+    # Spearman correlations
+    rho_euc, _ = spearmanr(d_act, d_euc)
+    rho_kl, _ = spearmanr(d_act, d_kl)
+
+    return {
+        'euclidean_alignment': float(rho_euc),
+        'kl_alignment': float(rho_kl),
+        'alignment_gap': float(rho_kl - rho_euc),
+    }
+
+
 def run_full_analysis(checkpoint_path: str, config: ExperimentConfig = None,
                       device: str = 'cpu', n_analysis: int = 5000):
     """Run the complete analysis pipeline.

@@ -86,9 +86,13 @@ class CompressionExperimentConfig:
     kl_probe_lr: float = 1e-3
     kl_probe_epochs: int = 1000
 
-    # Sweep
-    n_states_sweep: list = field(default_factory=lambda: [10, 20, 50, 100, 200])
+    # Sweep — finer resolution around the d_model=64 transition
+    n_states_sweep: list = field(default_factory=lambda: [5, 10, 20, 35, 50, 64, 100, 150, 200])
+    n_seeds: int = 3
     n_analysis: int = 5000
+
+    # Convergence diagnostics
+    convergence_threshold: float = 0.10
 
     # Reproducibility
     seed: int = 42
